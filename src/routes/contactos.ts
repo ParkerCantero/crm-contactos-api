@@ -55,3 +55,27 @@ contactosRouter.get("/:id", async (req, res) => {
 
   res.json({ ...contacto.rows[0], notas: notas.rows });
 });
+
+contactosRouter.post("/:id/notas", async (req, res) => {
+  const { id } = req.params;
+  const { contenido } = req.body ?? {};
+
+  const contacto = await pool.query(
+    "SELECT 1 FROM contactos WHERE id = $1",
+    [id]
+  );
+
+  if (contacto.rows.length === 0) {
+    res.status(404).json({ error: "Contacto no encontrado" });
+    return;
+  }
+
+  const result = await pool.query(
+    `INSERT INTO notas (contacto_id, contenido)
+     VALUES ($1, $2)
+     RETURNING *`,
+    [id, contenido]
+  );
+
+  res.status(201).json(result.rows[0]);
+});
