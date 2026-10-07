@@ -1,5 +1,6 @@
 import express from "express";
 import { pool } from "./db/pool";
+import { contactosRouter } from "./routes/contactos";
 
 export const app = express();
 
@@ -13,3 +14,5 @@ app.get("/health", async (_req, res) => {
     res.status(503).json({ status: "error", db: "down" });
   }
 });
+
+app.use("/contactos", contactosRouter);
