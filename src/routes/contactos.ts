@@ -33,3 +33,25 @@ contactosRouter.get("/", async (req, res) => {
   );
   res.json(result.rows);
 });
+
+
+contactosRouter.get("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  const contacto = await pool.query(
+    "SELECT * FROM contactos WHERE id = $1",
+    [id]
+  );
+
+  if (contacto.rows.length === 0) {
+    res.status(404).json({ error: "Contacto no encontrado" });
+    return;
+  }
+
+  const notas = await pool.query(
+    "SELECT * FROM notas WHERE contacto_id = $1 ORDER BY creado_en DESC",
+    [id]
+  );
+
+  res.json({ ...contacto.rows[0], notas: notas.rows });
+});
