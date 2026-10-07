@@ -52,6 +52,11 @@ contactosRouter.get("/", async (req, res) => {
 contactosRouter.get("/:id", async (req, res) => {
   const { id } = req.params;
 
+  if (!esIdValido(id)) {
+    res.status(400).json({ error: "El id debe ser un número entero positivo" });
+    return;
+  }
+
   const contacto = await pool.query(
     "SELECT * FROM contactos WHERE id = $1",
     [id]
