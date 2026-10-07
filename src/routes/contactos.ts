@@ -15,3 +15,21 @@ contactosRouter.post("/", async (req, res) => {
 
   res.status(201).json(result.rows[0]);
 });
+
+contactosRouter.get("/", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+
+  if (!q) {
+    const result = await pool.query("SELECT * FROM contactos ORDER BY id");
+    res.json(result.rows);
+    return;
+  }
+
+  const result = await pool.query(
+    `SELECT * FROM contactos
+     WHERE nombre ILIKE $1 OR empresa ILIKE $1
+     ORDER BY id`,
+    [`%${q}%`]
+  );
+  res.json(result.rows);
+});
