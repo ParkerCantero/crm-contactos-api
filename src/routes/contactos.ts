@@ -77,7 +77,19 @@ contactosRouter.get("/:id", async (req, res) => {
 
 contactosRouter.post("/:id/notas", async (req, res) => {
   const { id } = req.params;
-  const { contenido } = req.body ?? {};
+
+  if (!esIdValido(id)) {
+    res.status(400).json({ error: "El id debe ser un número entero positivo" });
+    return;
+  }
+
+  const body = req.body ?? {};
+  const errores = validarNota(body);
+
+  if (errores.length > 0) {
+    res.status(400).json({ error: "Datos inválidos", detalles: errores });
+    return;
+  }
 
   const contacto = await pool.query(
     "SELECT 1 FROM contactos WHERE id = $1",
@@ -85,15 +97,15 @@ contactosRouter.post("/:id/notas", async (req, res) => {
   );
 
   if (contacto.rows.length === 0) {
-    res.status(404).json({ error: `Contacto ${id} no encontrado` });  
-      return;
+    res.status(404).json({ error: `Contacto ${id} no encontrado` });
+    return;
   }
 
   const result = await pool.query(
     `INSERT INTO notas (contacto_id, contenido)
      VALUES ($1, $2)
      RETURNING *`,
-    [id, contenido]
+    [id, body.contenido.trim()]
   );
 
   res.status(201).json(result.rows[0]);
