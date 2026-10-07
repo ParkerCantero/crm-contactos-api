@@ -1,16 +1,30 @@
 import { Router } from "express";
 import { pool } from "../db/pool";
+import { esIdValido, validarContacto, validarNota } from "../validaciones";
 
 export const contactosRouter = Router();
 
 contactosRouter.post("/", async (req, res) => {
-  const { nombre, correo, telefono, empresa } = req.body ?? {};
+  const body = req.body ?? {};
+  const errores = validarContacto(body);
+
+  if (errores.length > 0) {
+    res.status(400).json({ error: "Datos inválidos", detalles: errores });
+    return;
+  }
+
+  const nombre = body.nombre.trim();
+  const correo = body.correo.trim();
+  const telefono =
+    typeof body.telefono === "string" && body.telefono.trim() ? body.telefono.trim() : null;
+  const empresa =
+    typeof body.empresa === "string" && body.empresa.trim() ? body.empresa.trim() : null;
 
   const result = await pool.query(
     `INSERT INTO contactos (nombre, correo, telefono, empresa)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [nombre, correo, telefono ?? null, empresa ?? null]
+    [nombre, correo, telefono, empresa]
   );
 
   res.status(201).json(result.rows[0]);
