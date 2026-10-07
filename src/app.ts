@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db/pool";
 import { contactosRouter } from "./routes/contactos";
+import { manejarErrores, rutaNoEncontrada } from "./middleware/errores";
 
 export const app = express();
 
@@ -16,3 +17,6 @@ app.get("/health", async (_req, res) => {
 });
 
 app.use("/contactos", contactosRouter);
+
+app.use(rutaNoEncontrada);
+app.use(manejarErrores);
