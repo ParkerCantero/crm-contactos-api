@@ -44,7 +44,7 @@ contactosRouter.get("/:id", async (req, res) => {
   );
 
   if (contacto.rows.length === 0) {
-    res.status(404).json({ error: "Contacto no encontrado" });
+    res.status(404).json({ error: `Contacto ${id} no encontrado` });
     return;
   }
 
@@ -66,8 +66,8 @@ contactosRouter.post("/:id/notas", async (req, res) => {
   );
 
   if (contacto.rows.length === 0) {
-    res.status(404).json({ error: "Contacto no encontrado" });
-    return;
+    res.status(404).json({ error: `Contacto ${id} no encontrado` });  
+      return;
   }
 
   const result = await pool.query(
