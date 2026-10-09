@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS contactos (
+  id SERIAL PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  correo VARCHAR(255) NOT NULL,
+  telefono VARCHAR(50),
+  empresa VARCHAR(150),
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notas (
+  id SERIAL PRIMARY KEY,
+  contacto_id INTEGER NOT NULL REFERENCES contactos(id) ON DELETE CASCADE,
+  contenido TEXT NOT NULL,
+  creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notas_contacto_id ON notas(contacto_id);
