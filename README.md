@@ -246,14 +246,16 @@ curl localhost:3000/contactos/1
 ## Estructura del proyecto
 
 ```
-db/init.sql                 Esquema de la base de datos
-docker-compose.yml          PostgreSQL local
-src/index.ts                Arranque del servidor
-src/app.ts                  Configuración de Express
-src/db/pool.ts              Pool de conexiones a Postgres
-src/routes/contactos.ts     Endpoints de contactos y notas
-src/validaciones.ts         Reglas de validación
-src/middleware/errores.ts   Manejo global de errores
+db/init.sql                                 Esquema de la base de datos
+docker-compose.yml                          PostgreSQL local
+src/index.ts                                Arranque del servidor
+src/app.ts                                  Configuración de Express
+src/db/pool.ts                              Pool de conexiones a Postgres
+src/routes/contactos.ts                     Endpoints: validan, orquestan y responden
+src/repositories/contactosRepository.ts     Consultas a la base de datos
+src/validaciones.ts                         Reglas de validación
+src/middleware/errores.ts                   Manejo global de errores
+test/contactos.test.ts                      Pruebas automatizadas
 ```
 
 ## Decisiones de diseño
@@ -264,6 +266,7 @@ src/middleware/errores.ts   Manejo global de errores
 - **Validaciones en un archivo aparte**, que devuelven todos los errores a la vez y respetan los largos de las columnas.
 - **`/health` consulta la base de datos**, para verificar el entorno de un vistazo.
 - **Historial de Git:** `main` solo tiene la configuración inicial; todo lo demás está en `feature/contactos`, con commits pequeños y mensajes en formato Conventional Commits.
+- **Capa de repositorio:** todas las consultas SQL viven en `contactosRepository.ts`. Las rutas no conocen SQL: validan, piden los datos al repositorio y deciden el código HTTP. Esto separa la lógica del acceso a datos y permite probar las rutas sin base de datos.
 
 ## Uso de IA
 
@@ -276,14 +279,33 @@ Aun así, no tomé nada como definitivo. Estas fueron las correcciones y verific
 - **Corregí un mensaje de error poco claro:** el 404 de "contacto no encontrado" no decía qué id fallaba. Lo ajusté para incluir el id.
 - **Cuestioné una decisión:** me pregunté si el `.env.example` era necesario antes de aceptarlo, y decidí dejarlo para que quien evalúe pueda levantar el proyecto con `cp .env.example .env`.
 - **Probé cada endpoint con `curl`**, incluidos los casos de error, y revisé que cada commit tuviera solo los archivos esperados antes de subirlo.
+- **Pruebas:** le di a la IA mis consultas y mi código para que me ayudara a generar las pruebas, y yo adapté los nombres de las rutas a los míos, porque tenía otros nombres. Le pedí que me explicara cómo funcionan los mocks y supertest para poder defenderlas yo mismo.
+- **Corregí las pruebas que fallaron:** dos pruebas asumían una forma distinta de llamar al repositorio (el listado sin búsqueda y la verificación del contacto antes de agregar una nota). Ajusté los tests a mi código real y eliminé una función del repositorio que quedó sin uso.
+- **Seguridad del repositorio:** le pedí ayuda para revisar y corregir vulnerabilidades en las consultas de mi repositorio, y verifiqué con `curl` y con las pruebas que el comportamiento de la API no cambiara.
 
 ## Mejoras desde mi perspectiva como desarrollador junior
 
 Hay cosas que me gustaría seguir aprendiendo y aplicar:
 
-- **Pruebas automatizadas:** hoy probé todo a mano con `curl`. Quiero aprender a escribir pruebas con Vitest o Jest y supertest, para que cada cambio se pueda verificar rápido y sin errores humanos.
 - **Migraciones versionadas:** ahora el esquema vive en un único `init.sql`, que solo corre al crear el volumen. Me gustaría aprender una herramienta de migraciones para poder cambiar la base sin borrarla.
 - **Correos duplicados:** hoy se puede crear dos veces el mismo correo. Agregaría una restricción única y respondería `409 Conflict`.
 - **Paginación y eliminar contactos:** el listado devuelve todo, y con muchos contactos sería lento. También me falta poder eliminar un contacto.
 - **Validación con una librería (por ejemplo Zod):** hoy escribí las validaciones a mano para entenderlas bien; con más entidades, una librería evitaría repetir código.
 - **Dockerfile para la API y manejo real de secretos:** hoy solo la base corre en Docker, y las credenciales son de desarrollo.
+
+
+
+## Pruebas automatizadas
+
+```bash
+npm test
+```
+
+Usan Vitest y supertest. El repositorio de datos está simulado (mock), por lo que las pruebas corren en milisegundos y **no necesitan base de datos ni Docker**.
+
+Son 14 pruebas:
+
+- **9 casos de error:** datos vacíos, correo inválido, nombre de solo espacios, JSON mal formado, id que no es un número, contacto inexistente (404), nota vacía, nota a un contacto inexistente y ruta inexistente. Además de revisar el código HTTP, comprueban que una entrada inválida nunca llega al repositorio.
+- **5 casos felices:** crear un contacto (guarda los datos sin espacios sobrantes), listar, buscar con `?q=`, ver un contacto con sus notas y agregar una nota.
+
+Como el repositorio está simulado, estas pruebas no verifican el SQL real. Eso se cubre con los ejemplos `curl` de la sección anterior.

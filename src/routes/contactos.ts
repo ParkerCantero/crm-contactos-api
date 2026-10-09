@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { pool } from "../db/pool";
 import { esIdValido, validarContacto, validarNota } from "../validaciones";
-
+import * as repositorio from "../repositories/contactosRepository";
 export const contactosRouter = Router();
 
 contactosRouter.post("/", async (req, res) => {
@@ -13,39 +12,28 @@ contactosRouter.post("/", async (req, res) => {
     return;
   }
 
-  const nombre = body.nombre.trim();
-  const correo = body.correo.trim();
-  const telefono =
-    typeof body.telefono === "string" && body.telefono.trim() ? body.telefono.trim() : null;
-  const empresa =
-    typeof body.empresa === "string" && body.empresa.trim() ? body.empresa.trim() : null;
-
-  const result = await pool.query(
-    `INSERT INTO contactos (nombre, correo, telefono, empresa)
-     VALUES ($1, $2, $3, $4)
-     RETURNING *`,
-    [nombre, correo, telefono, empresa]
-  );
-
-  res.status(201).json(result.rows[0]);
+  const contacto = await repositorio.crearContacto({
+    nombre: body.nombre.trim(),
+    correo: body.correo.trim(),
+    telefono: 
+    typeof body.telefono === "string" ? body.telefono.trim() : null,
+    empresa: 
+    typeof body.empresa === "string" ? body.empresa.trim() : null,
+  })
+   res.status(201).json(contacto);
 });
 
 contactosRouter.get("/", async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
   if (!q) {
-    const result = await pool.query("SELECT * FROM contactos ORDER BY id");
-    res.json(result.rows);
+    const contactos = await repositorio.listarContactos();
+    res.json(contactos);
     return;
   }
 
-  const result = await pool.query(
-    `SELECT * FROM contactos
-     WHERE nombre ILIKE $1 OR empresa ILIKE $1
-     ORDER BY id`,
-    [`%${q}%`]
-  );
-  res.json(result.rows);
+  const contactos = await repositorio.listarContactos(q);
+  res.json(contactos);
 });
 
 
@@ -57,22 +45,16 @@ contactosRouter.get("/:id", async (req, res) => {
     return;
   }
 
-  const contacto = await pool.query(
-    "SELECT * FROM contactos WHERE id = $1",
-    [id]
-  );
+  const contacto = await repositorio.obtenerContactoPorId(Number(id));
 
-  if (contacto.rows.length === 0) {
+  if (!contacto) {
     res.status(404).json({ error: `Contacto ${id} no encontrado` });
     return;
   }
 
-  const notas = await pool.query(
-    "SELECT * FROM notas WHERE contacto_id = $1 ORDER BY creado_en DESC",
-    [id]
-  );
+  const notas = await repositorio.listarNotas(id);
 
-  res.json({ ...contacto.rows[0], notas: notas.rows });
+  res.json({ ...contacto, notas: notas });
 });
 
 contactosRouter.post("/:id/notas", async (req, res) => {
@@ -91,22 +73,14 @@ contactosRouter.post("/:id/notas", async (req, res) => {
     return;
   }
 
-  const contacto = await pool.query(
-    "SELECT 1 FROM contactos WHERE id = $1",
-    [id]
-  );
+  const contacto = await repositorio.obtenerContactoPorId(Number(id));
 
-  if (contacto.rows.length === 0) {
+  if (!contacto) {
     res.status(404).json({ error: `Contacto ${id} no encontrado` });
     return;
   }
 
-  const result = await pool.query(
-    `INSERT INTO notas (contacto_id, contenido)
-     VALUES ($1, $2)
-     RETURNING *`,
-    [id, body.contenido.trim()]
-  );
+  const result = await repositorio.crearNota(id, body.contenido.trim());
 
-  res.status(201).json(result.rows[0]);
+  res.status(201).json(result);
 });
